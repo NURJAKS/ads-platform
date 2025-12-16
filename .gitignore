@@ -6,19 +6,6 @@
 .env
 tmp/
 
-# Frontend
-frontend/node_modules/
-frontend/build/
-frontend/dist/
-frontend/.env
-frontend/.env.local
-frontend/.env.development.local
-frontend/.env.test.local
-frontend/.env.production.local
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
-
 # Laravel
 laravel-app/vendor/
 laravel-app/node_modules/
@@ -58,3 +45,4 @@ go-image-service/vendor/
 go-image-service/*.exe
 go-image-service/*.test
 go-image-service/*.out
+go-image-service/.env

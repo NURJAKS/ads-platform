@@ -1,122 +1,97 @@
-# Платформа объявлений с модерацией
+# Ads Platform
 
-Полнофункциональная платформа для публикации объявлений с системой модерации.
+A modern, Dockerized classified ads platform featuring a Laravel-based monolithic architecture with Blade templates, enhanced by a Go microservice for high-performance image processing.
 
-## Структура проекта
+## 🚀 Architecture
 
-- `laravel-app/` - Backend на Laravel 12
-- `frontend/` - Frontend на React + Vite
-- `go-image-service/` - Микросервис для обработки изображений
+The project is orchestrated using Docker Compose and consists of the following services:
 
-## Быстрый старт
+*   **`app` (Laravel 11)**: The core application handling business logic, serving UI (Blade + TailwindCSS), and managing data.
+*   **`go-image` (Go)**: A dedicated microservice for efficient image resizing and processing, communicating with the main app via HTTP.
+*   **`pg` (PostgreSQL 15)**: The primary relational database.
+*   **`redis` (Redis 6)**: Used for caching and session management.
+*   **`minio` (MinIO)**: S3-compatible object storage for handling file uploads locally.
 
-### Backend (Laravel)
+## 🛠️ Technology Stack
 
-1. Перейдите в директорию `laravel-app`
-2. Установите зависимости:
-   ```bash
-   composer install
-   ```
-3. Настройте `.env` файл (скопируйте из `.env.example`)
-4. Запустите миграции:
-   ```bash
-   php artisan migrate
-   ```
-5. Запустите сервер:
-   ```bash
-   php artisan serve
-   ```
+*   **Backend**: Laravel 11, PHP 8.2
+*   **Frontend**: Blade Templates, TailwindCSS v4, Vite
+*   **Microservices**: Go (Golang) for image processing
+*   **Database**: PostgreSQL 15
+*   **Cache**: Redis
+*   **Storage**: MinIO (S3 compatible)
+*   **Infrastructure**: Docker, Docker Compose
 
-Backend будет доступен по адресу `http://localhost:8000`
+## 📋 Prerequisites
 
-### Frontend (React)
+Ensure you have the following installed on your system:
 
-1. Перейдите в директорию `frontend`
-2. Установите зависимости:
-   ```bash
-   npm install
-   ```
-3. Создайте файл `.env`:
-   ```
-   VITE_API_URL=http://localhost:8000/api/v1
-   ```
-4. Запустите dev сервер:
-   ```bash
-   npm run dev
-   ```
+*   [Docker](https://docs.docker.com/get-docker/)
+*   [Docker Compose](https://docs.docker.com/compose/install/)
 
-Frontend будет доступен по адресу `http://localhost:3000`
+## ⚡ Installation & Running
 
-## Docker Compose
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/NURJAKS/ads-platform.git
+    cd ads-platform
+    ```
 
-Для запуска всего проекта через Docker:
+2.  **Setup Environment Variables:**
+    
+    Copy the example `.env` file in the `laravel-app` directory:
+    ```bash
+    cp laravel-app/.env.example laravel-app/.env
+    ```
+    *Note: The default `.env.example` comes pre-configured for the Docker environment.*
 
-```bash
-docker-compose up -d
+3.  **Start the Application:**
+    
+    Run the following command to build and start all containers:
+    ```bash
+    docker-compose up -d --build
+    ```
+
+4.  **Install Dependencies & Setup Database:**
+    
+    Once the containers are running (check with `docker-compose ps`), install PHP dependencies and run migrations:
+    ```bash
+    # Install Composer dependencies
+    docker-compose exec app composer install
+
+    # Install NPM dependencies and build assets
+    docker-compose exec app npm install
+    docker-compose exec app npm run build
+
+    # Run Database Migrations
+    docker-compose exec app php artisan migrate
+
+    # (Optional) Seed the database
+    docker-compose exec app php artisan db:seed
+    ```
+
+5.  **Access the Application:**
+
+    *   **Main App**: [http://localhost:8000](http://localhost:8000)
+    *   **MinIO Console**: [http://localhost:9001](http://localhost:9001) (User: `minio`, Pass: `minio123`)
+
+## 📂 Project Structure
+
+```
+├── laravel-app/       # Main Laravel Application
+│   ├── app/           # Controllers, Models, etc.
+│   ├── resources/     # Views (Blade) & Assets
+│   └── routes/        # Web & API routes
+├── go-image-service/  # Go Microservice for Images
+├── docker-compose.yml # Docker Orchestration
+├── infra/             # Infrastructure configurations
+└── README.md          # Project Documentation
 ```
 
-## API Endpoints
+## 🧪 Running Tests
 
-### Публичные
-- `GET /api/v1/ads` - Список одобренных объявлений
-- `GET /api/v1/ads/{id}` - Детали объявления
-- `GET /api/v1/categories` - Список категорий
-- `POST /api/v1/auth/register` - Регистрация
-- `POST /api/v1/auth/login` - Вход
+To run the Laravel test suite:
 
-### Требуют аутентификации
-- `GET /api/v1/my/ads` - Мои объявления
-- `POST /api/v1/ads` - Создать объявление
-- `PUT /api/v1/ads/{id}` - Обновить объявление
-- `DELETE /api/v1/ads/{id}` - Удалить объявление
-- `POST /api/v1/ads/{id}/favorite` - Добавить в избранное
-- `DELETE /api/v1/ads/{id}/favorite` - Удалить из избранного
-- `GET /api/v1/favorites` - Список избранного
-- `POST /api/v1/auth/logout` - Выход
-
-### Админ-панель (требует роль admin)
-- `GET /api/v1/admin/ads?status=pending` - Список объявлений для модерации
-- `POST /api/v1/admin/ads/{id}/approve` - Одобрить объявление
-- `POST /api/v1/admin/ads/{id}/reject` - Отклонить объявление
-- `GET /api/v1/admin/moderation/logs` - История модерации
-
-## Роли пользователей
-
-- **user** - Обычный пользователь, может создавать объявления
-- **admin** - Администратор, может модерировать объявления
-
-## Статусы объявлений
-
-- **pending** - Ожидает модерации
-- **approved** - Одобрено, видно всем
-- **rejected** - Отклонено
-
-## Особенности
-
-- Все объявления проходят модерацию перед публикацией
-- История всех действий администраторов сохраняется
-- Поддержка загрузки изображений через Go-сервис
-- Полнотекстовый поиск по объявлениям
-- Фильтрация по категориям, городу, цене
-- Система избранного
-- Система сообщений между пользователями
-
-## Технологии
-
-### Backend
-- Laravel 12
-- PostgreSQL
-- Redis
-- MinIO (S3-совместимое хранилище)
-- Laravel Sanctum (аутентификация)
-
-### Frontend
-- React 18
-- React Router
-- Axios
-- Vite
-
-### Инфраструктура
-- Docker & Docker Compose
-- Go (микросервис обработки изображений)
-
+```bash
+docker-compose exec app php artisan test
+```
