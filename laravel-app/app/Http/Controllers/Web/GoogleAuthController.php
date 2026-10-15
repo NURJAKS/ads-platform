@@ -17,34 +17,50 @@ class GoogleAuthController extends Controller
 
     public function callback()
     {
-        $googleUser = Socialite::driver('google')->user();
+        try {
+            $googleUser = Socialite::driver('google')->user();
 
-        // 1️⃣ Ищем пользователя по email
-        $user = User::where('email', $googleUser->getEmail())->first();
+            // 1️⃣ Ищем пользователя по email
+            $user = User::where('email', $googleUser->getEmail())->first();
 
-        if ($user) {
-            // 2️⃣ Если есть — привязываем Google
-            if (!$user->google_id) {
-                $user->update([
+            if ($user) {
+                // 2️⃣ Если есть — привязываем Google (если еще не привязан)
+                if (!$user->google_id) {
+                    $user->update([
+                        'google_id' => $googleUser->getId(),
+                        'avatar' => $googleUser->getAvatar(),
+                    ]);
+                } else {
+                    // Обновляем аватар, если изменился
+                    $user->update([
+                        'avatar' => $googleUser->getAvatar(),
+                    ]);
+                }
+            } else {
+                // 3️⃣ Если нет — создаём нового пользователя
+                $user = User::create([
+                    'name' => $googleUser->getName(),
+                    'email' => $googleUser->getEmail(),
                     'google_id' => $googleUser->getId(),
                     'avatar' => $googleUser->getAvatar(),
+                    'password' => bcrypt(Str::random(16)),
+                    'role' => 'user', // По умолчанию обычный пользователь
                 ]);
             }
-        } else {
-            // 3️⃣ Если нет — создаём
-            $user = User::create([
-                'name' => $googleUser->getName(),
-                'email' => $googleUser->getEmail(),
-                'google_id' => $googleUser->getId(),
-                'avatar' => $googleUser->getAvatar(),
-                'password' => bcrypt(Str::random(16)),
-            ]);
+
+            // 4️⃣ WEB-логин (КЛЮЧ)
+            Auth::login($user, true); // true = запомнить пользователя
+
+            // Редирект в зависимости от роли
+            if ($user->role === 'admin') {
+                return redirect()->route('admin.dashboard')->with('success', 'Добро пожаловать, ' . $user->name . '!');
+            }
+
+            return redirect()->route('ads.index')->with('success', 'Добро пожаловать, ' . $user->name . '!');
+        } catch (\Exception $e) {
+            \Log::error('Google OAuth error: ' . $e->getMessage());
+            return redirect()->route('login')->with('error', 'Ошибка входа через Google. Попробуйте снова.');
         }
-
-        // 4️⃣ WEB-логин (КЛЮЧ)
-        Auth::login($user);
-
-        return redirect('/admin/dashboard'); // или куда тебе нужно
     }
 }
 

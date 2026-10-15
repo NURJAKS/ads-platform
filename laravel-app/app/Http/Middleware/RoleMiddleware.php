@@ -13,11 +13,17 @@ class RoleMiddleware
         $user = Auth::user();
 
         if (!$user) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unauthenticated'], 401);
+            }
+            return redirect()->route('login');
         }
 
         if ($user->role !== $role) {
-            return response()->json(['message' => 'Forbidden'], 403);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+            abort(403);
         }
 
         return $next($request);

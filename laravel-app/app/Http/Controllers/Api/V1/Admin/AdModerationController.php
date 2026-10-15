@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Helpers\ApiResponse;
 use App\Models\Ad;
 use App\Models\AdModerationLog;
 use Illuminate\Http\Request;
@@ -16,19 +17,15 @@ class AdModerationController extends Controller
         $status = $request->get('status', 'pending');
 
         if (!in_array($status, ['pending', 'approved', 'rejected'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid status'
-            ], 422);
+            return ApiResponse::error('Invalid status. Allowed values: pending, approved, rejected', null, 422);
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => Ad::with(['user', 'category'])
-                ->where('status', $status)
-                ->latest()
-                ->paginate(20)
-        ]);
+        $ads = Ad::with(['user', 'category', 'images'])
+            ->where('status', $status)
+            ->latest()
+            ->paginate(20);
+
+        return ApiResponse::paginated($ads);
     }
 
     // POST /api/v1/admin/ads/{id}/approve
@@ -37,10 +34,7 @@ class AdModerationController extends Controller
         $ad = Ad::findOrFail($id);
 
         if ($ad->status !== 'pending') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Only pending ads can be approved'
-            ], 422);
+            return ApiResponse::error('Only pending ads can be approved', null, 422);
         }
 
         $oldStatus = $ad->status;
@@ -57,14 +51,10 @@ class AdModerationController extends Controller
             'comment'    => null,
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Ad approved',
-            'data' => [
-                'id' => $ad->id,
-                'status' => $ad->status
-            ]
-        ]);
+        return ApiResponse::success([
+            'id' => $ad->id,
+            'status' => $ad->status
+        ], 'Ad approved successfully');
     }
 
     // POST /api/v1/admin/ads/{id}/reject
@@ -77,10 +67,7 @@ class AdModerationController extends Controller
         $ad = Ad::findOrFail($id);
 
         if ($ad->status !== 'pending') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Only pending ads can be rejected'
-            ], 422);
+            return ApiResponse::error('Only pending ads can be rejected', null, 422);
         }
 
         $oldStatus = $ad->status;
@@ -97,24 +84,19 @@ class AdModerationController extends Controller
             'comment'    => $request->reason,
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Ad rejected',
-            'data' => [
-                'id' => $ad->id,
-                'status' => $ad->status
-            ]
-        ]);
+        return ApiResponse::success([
+            'id' => $ad->id,
+            'status' => $ad->status
+        ], 'Ad rejected successfully');
     }
 
     // GET /api/v1/admin/moderation/logs
     public function logs()
     {
-        return response()->json([
-            'success' => true,
-            'data' => AdModerationLog::with(['admin', 'ad'])
-                ->latest()
-                ->paginate(20)
-        ]);
+        $logs = AdModerationLog::with(['admin', 'ad'])
+            ->latest()
+            ->paginate(20);
+
+        return ApiResponse::paginated($logs);
     }
 }

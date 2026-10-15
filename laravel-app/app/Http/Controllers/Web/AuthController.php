@@ -13,6 +13,32 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
+    public function showRegister()
+    {
+        return view('auth.register');
+    }
+
+    public function register(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = \App\Models\User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => \Illuminate\Support\Facades\Hash::make($request->password),
+            'role' => 'user', 
+        ]);
+
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()->intended('/ads');
+    }
+
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -23,18 +49,17 @@ class AuthController extends Controller
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
 
-            if (Auth::user()->role !== 'admin') {
-                Auth::logout();
-                return back()->withErrors([
-                    'email' => 'Access denied',
-                ]);
+            // Check if admin, redirect to admin dashboard
+            if (Auth::user()->role === 'admin') {
+                return redirect()->route('admin.dashboard');
             }
 
-            return redirect()->route('admin.dashboard');
+            // Otherwise redirect to main ads page
+            return redirect()->intended('/ads');
         }
 
         return back()->withErrors([
-            'email' => 'Invalid credentials',
+            'email' => 'Неверный email или пароль',
         ]);
     }
 
@@ -44,6 +69,6 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/login');
+        return redirect('/');
     }
 }

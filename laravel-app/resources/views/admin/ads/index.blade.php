@@ -1,196 +1,148 @@
 @extends('layouts.admin')
 
 @section('title', 'Moderation')
-@section('page-title', 'Ads Moderation')
+@section('page-title', 'Модерация объявлений')
 
 @section('content')
 
-<div x-data="adsModeration()" x-init="fetchAds()" class="bg-white rounded shadow p-6">
+@if(session('success'))
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <span class="block sm:inline">{{ session('success') }}</span>
+    </div>
+@endif
 
+@if(session('error'))
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <span class="block sm:inline">{{ session('error') }}</span>
+    </div>
+@endif
+
+<div class="bg-white rounded shadow p-6">
     {{-- Tabs --}}
     <div class="flex space-x-4 border-b mb-6">
-        <button @click="currentStatus = 'pending'; fetchAds()" 
-                :class="{'border-b-2 border-blue-500 text-blue-600': currentStatus === 'pending', 'text-gray-500': currentStatus !== 'pending'}"
-                class="pb-2 font-medium focus:outline-none">
-            Pending
-        </button>
-        <button @click="currentStatus = 'approved'; fetchAds()" 
-                :class="{'border-b-2 border-green-500 text-green-600': currentStatus === 'approved', 'text-gray-500': currentStatus !== 'approved'}"
-                class="pb-2 font-medium focus:outline-none">
-            Approved
-        </button>
-        <button @click="currentStatus = 'rejected'; fetchAds()" 
-                :class="{'border-b-2 border-red-500 text-red-600': currentStatus === 'rejected', 'text-gray-500': currentStatus !== 'rejected'}"
-                class="pb-2 font-medium focus:outline-none">
-            Rejected
-        </button>
-    </div>
-
-    {{-- Loading --}}
-    <div x-show="loading" class="text-center py-10 text-gray-500">
-        Loading...
+        <a href="{{ route('admin.ads.index', ['status' => 'pending']) }}" 
+           class="pb-2 font-medium focus:outline-none {{ $status === 'pending' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500' }}">
+            На модерации
+        </a>
+        <a href="{{ route('admin.ads.index', ['status' => 'approved']) }}" 
+           class="pb-2 font-medium focus:outline-none {{ $status === 'approved' ? 'border-b-2 border-green-500 text-green-600' : 'text-gray-500' }}">
+            Одобренные
+        </a>
+        <a href="{{ route('admin.ads.index', ['status' => 'rejected']) }}" 
+           class="pb-2 font-medium focus:outline-none {{ $status === 'rejected' ? 'border-b-2 border-red-500 text-red-600' : 'text-gray-500' }}">
+            Отклоненные
+        </a>
     </div>
 
     {{-- Table --}}
-    <div x-show="!loading" class="overflow-x-auto">
+    <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Объявление</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Пользователь</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Цена</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-                <template x-for="ad in ads" :key="ad.id">
+                @forelse($ads as $ad)
                     <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="ad.id"></td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $ad->id }}</td>
                         <td class="px-6 py-4">
-                            <div class="text-sm font-medium text-gray-900" x-text="ad.title"></div>
-                            <div class="text-sm text-gray-500 truncate w-48" x-text="ad.description"></div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="ad.user?.name || 'Unknown'"></td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900" x-text="formatPrice(ad.price)"></td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="new Date(ad.created_at).toLocaleDateString()"></td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <template x-if="currentStatus === 'pending'">
-                                <div class="flex space-x-2">
-                                    <button @click="approveAd(ad.id)" class="text-green-600 hover:text-green-900 border border-green-600 rounded px-2 py-1 text-xs hover:bg-green-50">Approve</button>
-                                    <button @click="openRejectModal(ad.id)" class="text-red-600 hover:text-red-900 border border-red-600 rounded px-2 py-1 text-xs hover:bg-red-50">Reject</button>
+                            <div class="flex items-center">
+                                @if($ad->images->isNotEmpty())
+                                    <img class="h-10 w-10 rounded object-cover mr-3" src="{{ route('ads.image', $ad->images->first()->path) }}" alt="">
+                                @endif
+                                <div>
+                                    <div class="text-sm font-medium text-gray-900">{{ $ad->title }}</div>
+                                    <div class="text-sm text-gray-500 truncate w-48">{{ \Illuminate\Support\Str::limit($ad->description, 50) }}</div>
                                 </div>
-                            </template>
-                            <template x-if="currentStatus !== 'pending'">
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                                      :class="{'bg-green-100 text-green-800': ad.status === 'approved', 'bg-red-100 text-red-800': ad.status === 'rejected'}">
-                                    <span x-text="ad.status"></span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $ad->user->name ?? 'Unknown' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{{ number_format($ad->price, 0, ',', ' ') }} ₽</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $ad->created_at->format('d.m.Y H:i') }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            @if($status === 'pending')
+                                <div class="flex space-x-2">
+                                    <form action="{{ route('admin.ads.approve', $ad->id) }}" method="POST" class="inline">
+                                        @csrf
+                                        <button type="submit" onclick="return confirm('Одобрить объявление?')" class="text-green-600 hover:text-green-900 border border-green-600 rounded px-2 py-1 text-xs hover:bg-green-50">
+                                            Одобрить
+                                        </button>
+                                    </form>
+                                    <button onclick="openRejectModal({{ $ad->id }})" class="text-red-600 hover:text-red-900 border border-red-600 rounded px-2 py-1 text-xs hover:bg-red-50">
+                                        Отклонить
+                                    </button>
+                                    <a href="{{ route('ads.show', $ad->id) }}" class="text-blue-600 hover:text-blue-900 border border-blue-600 rounded px-2 py-1 text-xs hover:bg-blue-50" target="_blank">
+                                        Просмотр
+                                    </a>
+                                </div>
+                            @else
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                    {{ $ad->status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                    {{ $ad->status === 'approved' ? 'Одобрено' : 'Отклонено' }}
                                 </span>
-                            </template>
+                                <a href="{{ route('ads.show', $ad->id) }}" class="ml-2 text-blue-600 hover:text-blue-900 text-xs" target="_blank">
+                                    Просмотр
+                                </a>
+                            @endif
                         </td>
                     </tr>
-                </template>
-                <template x-if="ads.length === 0">
+                @empty
                     <tr>
                         <td colspan="6" class="px-6 py-10 text-center text-gray-500">
-                            No ads found in this status.
+                            Объявлений со статусом "{{ $status }}" не найдено
                         </td>
                     </tr>
-                </template>
+                @endforelse
             </tbody>
         </table>
     </div>
 
-    {{-- Pagination (Simplified) --}}
-    <div x-show="pagination.total > 0" class="mt-4 flex justify-between items-center text-sm text-gray-600">
-        <div>
-            Showing <span x-text="pagination.from || 0"></span> to <span x-text="pagination.to || 0"></span> of <span x-text="pagination.total"></span>
-        </div>
-        <div class="flex space-x-2">
-            <button @click="changePage(pagination.prev_page_url)" :disabled="!pagination.prev_page_url" class="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50">Prev</button>
-            <button @click="changePage(pagination.next_page_url)" :disabled="!pagination.next_page_url" class="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50">Next</button>
-        </div>
+    {{-- Pagination --}}
+    <div class="mt-4">
+        {{ $ads->links() }}
     </div>
+</div>
 
-
-    {{-- Reject Modal --}}
-    <div x-show="rejectModalOpen" 
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-         style="display: none;"
-         x-transition.opacity>
-        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
-            <h3 class="text-lg font-bold mb-4">Reject Ad</h3>
-            <p class="mb-2 text-sm text-gray-600">Please provide a reason for rejection:</p>
-            <textarea x-model="rejectReason" class="w-full border rounded p-2 focus:ring-2 focus:ring-red-500 mb-4" rows="3" placeholder="Reason..."></textarea>
+{{-- Reject Modal --}}
+<div id="rejectModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+        <h3 class="text-lg font-bold mb-4">Отклонить объявление</h3>
+        <form id="rejectForm" method="POST" action="">
+            @csrf
+            <p class="mb-2 text-sm text-gray-600">Укажите причину отклонения:</p>
+            <textarea name="reason" required class="w-full border rounded p-2 focus:ring-2 focus:ring-red-500 mb-4" rows="3" placeholder="Причина отклонения..."></textarea>
             
             <div class="flex justify-end space-x-2">
-                <button @click="rejectModalOpen = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
-                <button @click="submitReject()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Reject Ad</button>
+                <button type="button" onclick="closeRejectModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">Отмена</button>
+                <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Отклонить</button>
             </div>
-        </div>
+        </form>
     </div>
-
 </div>
 
 <script>
-    function adsModeration() {
-        return {
-            currentStatus: 'pending',
-            ads: [],
-            pagination: {},
-            loading: false,
-            rejectModalOpen: false,
-            rejectReason: '',
-            targetAdId: null,
-
-            async fetchAds(url = null) {
-                this.loading = true;
-                const endpoint = url || `/api/v1/admin/ads?status=${this.currentStatus}`;
-                
-                try {
-                    // Using AXIOS which should handle XSRF if configured, or Fetch with headers
-                    const response = await axios.get(endpoint);
-                    if(response.data.success) {
-                        this.ads = response.data.data.data;
-                        this.pagination = response.data.data; // Store full pagination object
-                    } else {
-                        alert('Error fetching ads');
-                    }
-                } catch (error) {
-                    console.error(error);
-                    alert('Failed to load ads. Ensure you are logged in.');
-                } finally {
-                    this.loading = false;
-                }
-            },
-
-            changePage(url) {
-                if(url) this.fetchAds(url);
-            },
-
-            formatPrice(price) {
-                return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price);
-            },
-
-            async approveAd(id) {
-                if(!confirm('Approve this ad?')) return;
-
-                try {
-                    await axios.post(`/api/v1/admin/ads/${id}/approve`);
-                    this.fetchAds(); // Refresh list
-                    alert('Ad Approved!');
-                } catch (error) {
-                    console.error(error);
-                    alert('Error approving ad');
-                }
-            },
-
-            openRejectModal(id) {
-                this.targetAdId = id;
-                this.rejectReason = '';
-                this.rejectModalOpen = true;
-            },
-
-            async submitReject() {
-                if(!this.rejectReason) {
-                    alert('Reason is required');
-                    return;
-                }
-
-                try {
-                    await axios.post(`/api/v1/admin/ads/${this.targetAdId}/reject`, {
-                        reason: this.rejectReason
-                    });
-                    this.rejectModalOpen = false;
-                    this.fetchAds(); // Refresh list
-                    alert('Ad Rejected');
-                } catch (error) {
-                    console.error(error);
-                    alert('Error rejecting ad');
-                }
-            }
-        }
+    function openRejectModal(adId) {
+        document.getElementById('rejectForm').action = '{{ route("admin.ads.reject", ":id") }}'.replace(':id', adId);
+        document.getElementById('rejectModal').classList.remove('hidden');
     }
+
+    function closeRejectModal() {
+        document.getElementById('rejectModal').classList.add('hidden');
+        document.getElementById('rejectForm').reset();
+    }
+
+    // Close modal on outside click
+    document.getElementById('rejectModal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeRejectModal();
+        }
+    });
 </script>
+
 @endsection

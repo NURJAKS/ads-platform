@@ -38,6 +38,11 @@ class User extends Authenticatable
         return $this->hasMany(Favorite::class);
     }
 
+    public function favoriteAds()
+    {
+        return $this->belongsToMany(Ad::class, 'favorites', 'user_id', 'ad_id');
+    }
+
     public function sentMessages()
     {
         return $this->hasMany(Message::class, 'sender_id');

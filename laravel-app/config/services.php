@@ -36,13 +36,13 @@ return [
     ],
 
     'image' => [
-        'url' => env('IMAGE_SERVICE_URL', 'http://localhost:8080/process'),
+        'url' => env('IMAGE_SERVICE_URL', 'http://go-image-service:8080/process'),
     ],
 
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
-        'redirect' => env('GOOGLE_REDIRECT_URI', 'http://localhost:8000/api/v1/auth/google/callback'),
+        'redirect' => env('GOOGLE_REDIRECT_URI', 'http://localhost:8000/auth/google/callback'),
     ],
 
 ];
